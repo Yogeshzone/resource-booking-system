@@ -105,33 +105,14 @@ public class ReservationServiceImpl implements ReservationService {
     private ReservationResponse processReservationCreation(
             User user, Long resourceId, LocalDateTime startTime, LocalDateTime endTime, ReservationStatus status) {
 
-        if (startTime == null || endTime == null) {
-            throw new BadRequestException("Start time and end time must not be null");
-        }
-        if (!endTime.isAfter(startTime)) {
-            throw new BadRequestException("End time must be strictly after start time");
-        }
+        validateReservationTimes(startTime, endTime);
 
         Resource resource = resourceRepository.findById(resourceId)
                 .orElseThrow(() -> new ResourceNotFoundException(resourceId));
 
-        if (Boolean.FALSE.equals(resource.getAvailable())) {
-            throw new BadRequestException("Resource '" + resource.getName() + "' is currently unavailable for booking");
-        }
+        validateResourceAvailability(resource);
+        checkReservationConflict(resourceId, startTime, endTime, null, resource.getName());
 
-        // Conflict check: Active reservations (PENDING or CONFIRMED) cannot overlap [start, end)
-        boolean hasConflict = reservationRepository.existsConflictingReservation(
-                resourceId, startTime, endTime, BLOCKING_STATUSES, null
-        );
-
-        if (hasConflict) {
-            throw new ReservationConflictException(String.format(
-                    "Resource '%s' (ID: %d) is already booked during the requested interval %s to %s",
-                    resource.getName(), resourceId, startTime, endTime
-            ));
-        }
-
-        // Calculate price server-side
         BigDecimal price = PriceCalculator.calculatePrice(resource.getPrice(), startTime, endTime);
 
         Reservation reservation = new Reservation(
@@ -172,13 +153,7 @@ public class ReservationServiceImpl implements ReservationService {
             String sort) {
 
         UserPrincipal currentUser = SecurityUtils.getCurrentUser();
-        Long effectiveUserId;
-
-        if (currentUser.isAdmin()) {
-            effectiveUserId = userId; // Admin can view all or filter by specific user
-        } else {
-            effectiveUserId = currentUser.getId(); // Normal user ONLY sees their own reservations
-        }
+        Long effectiveUserId = currentUser.isAdmin() ? userId : currentUser.getId();
 
         Pageable pageable = SortUtils.createPageable(
                 page,
@@ -199,15 +174,15 @@ public class ReservationServiceImpl implements ReservationService {
                 .map(reservationMapper::toResponseDto)
                 .toList();
 
-        return new PagedResponse<>(
-                responses,
-                reservationPage.getNumber(),
-                reservationPage.getSize(),
-                reservationPage.getTotalElements(),
-                reservationPage.getTotalPages(),
-                reservationPage.isFirst(),
-                reservationPage.isLast()
-        );
+        return PagedResponse.<ReservationResponse>builder()
+                .content(responses)
+                .page(reservationPage.getNumber())
+                .size(reservationPage.getSize())
+                .totalElements(reservationPage.getTotalElements())
+                .totalPages(reservationPage.getTotalPages())
+                .first(reservationPage.isFirst())
+                .last(reservationPage.isLast())
+                .build();
     }
 
     @Override
@@ -238,39 +213,38 @@ public class ReservationServiceImpl implements ReservationService {
         boolean timesChanged = false;
         LocalDateTime newStart = reservation.getStartTime();
         LocalDateTime newEnd = reservation.getEndTime();
+        ReservationStatus newStatus = reservation.getStatus();
 
         if (request.getStartTime() != null || request.getEndTime() != null) {
             newStart = request.getStartTime() != null ? request.getStartTime() : reservation.getStartTime();
             newEnd = request.getEndTime() != null ? request.getEndTime() : reservation.getEndTime();
-
-            if (!newEnd.isAfter(newStart)) {
-                throw new BadRequestException("End time must be strictly after start time");
-            }
+            validateReservationTimes(newStart, newEnd);
             timesChanged = true;
         }
 
         if (request.getStatus() != null) {
             validateStatusTransition(reservation.getStatus(), request.getStatus());
-            reservation.setStatus(request.getStatus());
+            newStatus = request.getStatus();
+        }
+
+        // Check conflicts if times changed OR if the reservation is in/transitioning to an active state
+        if (timesChanged || (request.getStatus() != null && BLOCKING_STATUSES.contains(newStatus))) {
+            checkReservationConflict(
+                    reservation.getResource().getId(),
+                    newStart,
+                    newEnd,
+                    reservation.getId(),
+                    reservation.getResource().getName()
+            );
         }
 
         if (timesChanged) {
-            boolean hasConflict = reservationRepository.existsConflictingReservation(
-                    reservation.getResource().getId(), newStart, newEnd, BLOCKING_STATUSES, reservation.getId()
-            );
-
-            if (hasConflict) {
-                throw new ReservationConflictException(String.format(
-                        "Resource '%s' (ID: %d) is already booked during %s to %s",
-                        reservation.getResource().getName(), reservation.getResource().getId(), newStart, newEnd
-                ));
-            }
-
             reservation.setStartTime(newStart);
             reservation.setEndTime(newEnd);
             reservation.setPrice(PriceCalculator.calculatePrice(reservation.getResource().getPrice(), newStart, newEnd));
         }
 
+        reservation.setStatus(newStatus);
         Reservation saved = reservationRepository.save(reservation);
         log.info("Admin updated reservation ID {}", id);
         return reservationMapper.toResponseDto(saved);
@@ -283,8 +257,18 @@ public class ReservationServiceImpl implements ReservationService {
                 .orElseThrow(() -> new ReservationNotFoundException(id));
 
         validateStatusTransition(reservation.getStatus(), targetStatus);
-        reservation.setStatus(targetStatus);
 
+        if (BLOCKING_STATUSES.contains(targetStatus)) {
+            checkReservationConflict(
+                    reservation.getResource().getId(),
+                    reservation.getStartTime(),
+                    reservation.getEndTime(),
+                    reservation.getId(),
+                    reservation.getResource().getName()
+            );
+        }
+
+        reservation.setStatus(targetStatus);
         Reservation saved = reservationRepository.save(reservation);
         log.info("Updated reservation ID {} status to {}", id, targetStatus);
         return reservationMapper.toResponseDto(saved);
@@ -298,6 +282,35 @@ public class ReservationServiceImpl implements ReservationService {
 
         reservationRepository.delete(reservation);
         log.info("Admin deleted reservation ID {}", id);
+    }
+
+    private void validateReservationTimes(LocalDateTime startTime, LocalDateTime endTime) {
+        if (startTime == null || endTime == null) {
+            throw new BadRequestException("Start time and end time must not be null");
+        }
+        if (!endTime.isAfter(startTime)) {
+            throw new BadRequestException("End time must be strictly after start time");
+        }
+    }
+
+    private void validateResourceAvailability(Resource resource) {
+        if (Boolean.FALSE.equals(resource.getAvailable())) {
+            throw new BadRequestException("Resource '" + resource.getName() + "' is currently unavailable for booking");
+        }
+    }
+
+    private void checkReservationConflict(
+            Long resourceId, LocalDateTime startTime, LocalDateTime endTime, Long excludeReservationId, String resourceName) {
+        boolean hasConflict = reservationRepository.existsConflictingReservation(
+                resourceId, startTime, endTime, BLOCKING_STATUSES, excludeReservationId
+        );
+
+        if (hasConflict) {
+            throw new ReservationConflictException(String.format(
+                    "Resource '%s' (ID: %d) is already booked during the requested interval %s to %s",
+                    resourceName, resourceId, startTime, endTime
+            ));
+        }
     }
 
     private void validateStatusTransition(ReservationStatus currentStatus, ReservationStatus targetStatus) {
@@ -317,7 +330,7 @@ public class ReservationServiceImpl implements ReservationService {
             return;
         }
 
-        // CONFIRMED -> CANCELLED is allowed (or back to PENDING if admin requests)
+        // CONFIRMED -> CANCELLED or PENDING is allowed
         if (currentStatus == ReservationStatus.CONFIRMED &&
                 (targetStatus == ReservationStatus.CANCELLED || targetStatus == ReservationStatus.PENDING)) {
             return;
