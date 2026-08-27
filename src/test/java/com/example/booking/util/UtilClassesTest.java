@@ -9,7 +9,9 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class UtilClassesTest {
 
@@ -260,6 +262,36 @@ class UtilClassesTest {
         assertEquals(1, emptyFilter.getPage());
         assertEquals(20, emptyFilter.getSize());
         assertEquals("price,asc", emptyFilter.getSort());
+
+        com.example.booking.dto.resource.ResourceFilterRequest resFilter = new com.example.booking.dto.resource.ResourceFilterRequest(
+                "ROOM", true, new BigDecimal("50"), new BigDecimal("500"), "test", 0, 10, "id,asc"
+        );
+        assertEquals("ROOM", resFilter.getType());
+        assertTrue(resFilter.getAvailable());
+        assertEquals(new BigDecimal("50"), resFilter.getMinPrice());
+        assertEquals(new BigDecimal("500"), resFilter.getMaxPrice());
+        assertEquals("test", resFilter.getSearch());
+        assertEquals(0, resFilter.getPage());
+        assertEquals(10, resFilter.getSize());
+        assertEquals("id,asc", resFilter.getSort());
+
+        com.example.booking.dto.resource.ResourceFilterRequest emptyResFilter = new com.example.booking.dto.resource.ResourceFilterRequest();
+        emptyResFilter.setType("VEHICLE");
+        emptyResFilter.setAvailable(false);
+        emptyResFilter.setMinPrice(new BigDecimal("100"));
+        emptyResFilter.setMaxPrice(new BigDecimal("1000"));
+        emptyResFilter.setSearch("car");
+        emptyResFilter.setPage(2);
+        emptyResFilter.setSize(50);
+        emptyResFilter.setSort("price,desc");
+        assertEquals("VEHICLE", emptyResFilter.getType());
+        assertFalse(emptyResFilter.getAvailable());
+        assertEquals(new BigDecimal("100"), emptyResFilter.getMinPrice());
+        assertEquals(new BigDecimal("1000"), emptyResFilter.getMaxPrice());
+        assertEquals("car", emptyResFilter.getSearch());
+        assertEquals(2, emptyResFilter.getPage());
+        assertEquals(50, emptyResFilter.getSize());
+        assertEquals("price,desc", emptyResFilter.getSort());
 
         // Exceptions
         assertEquals("msg", new com.example.booking.exception.InvalidStatusTransitionException("msg").getMessage());

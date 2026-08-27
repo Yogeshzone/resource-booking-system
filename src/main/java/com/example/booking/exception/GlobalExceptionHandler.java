@@ -32,21 +32,25 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidationException(
             MethodArgumentNotValidException ex, HttpServletRequest request) {
-        Map<String, String> fieldErrors = new HashMap<>();
-        for (FieldError error : ex.getBindingResult().getFieldErrors()) {
-            fieldErrors.put(error.getField(), error.getDefaultMessage());
-        }
-        return buildValidationErrorResponse(HttpStatus.BAD_REQUEST, "Validation Failed", "Request validation failed", request, fieldErrors);
+        return buildValidationErrorResponse(
+                HttpStatus.BAD_REQUEST,
+                "Validation Failed",
+                "Request validation failed",
+                request,
+                extractFieldErrors(ex)
+        );
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ErrorResponse> handleConstraintViolation(
             ConstraintViolationException ex, HttpServletRequest request) {
-        Map<String, String> fieldErrors = new HashMap<>();
-        ex.getConstraintViolations().forEach(violation ->
-                fieldErrors.put(violation.getPropertyPath().toString(), violation.getMessage())
+        return buildValidationErrorResponse(
+                HttpStatus.BAD_REQUEST,
+                "Validation Failed",
+                "Constraint validation failed",
+                request,
+                extractConstraintViolations(ex)
         );
-        return buildValidationErrorResponse(HttpStatus.BAD_REQUEST, "Validation Failed", "Constraint validation failed", request, fieldErrors);
     }
 
     @ExceptionHandler({
@@ -180,5 +184,21 @@ public class GlobalExceptionHandler {
                 fieldErrors
         );
         return ResponseEntity.status(status).body(response);
+    }
+
+    private Map<String, String> extractFieldErrors(MethodArgumentNotValidException ex) {
+        Map<String, String> fieldErrors = new HashMap<>();
+        for (FieldError error : ex.getBindingResult().getFieldErrors()) {
+            fieldErrors.put(error.getField(), error.getDefaultMessage());
+        }
+        return fieldErrors;
+    }
+
+    private Map<String, String> extractConstraintViolations(ConstraintViolationException ex) {
+        Map<String, String> fieldErrors = new HashMap<>();
+        ex.getConstraintViolations().forEach(violation ->
+                fieldErrors.put(violation.getPropertyPath().toString(), violation.getMessage())
+        );
+        return fieldErrors;
     }
 }

@@ -3,11 +3,11 @@ package com.example.booking.controller;
 import com.example.booking.dto.common.ErrorResponse;
 import com.example.booking.dto.common.PagedResponse;
 import com.example.booking.dto.resource.ResourceCreateRequest;
+import com.example.booking.dto.resource.ResourceFilterRequest;
 import com.example.booking.dto.resource.ResourceResponse;
 import com.example.booking.dto.resource.ResourceUpdateRequest;
 import com.example.booking.service.ResourceService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -15,7 +15,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.math.BigDecimal;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -27,7 +27,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -69,32 +68,18 @@ public class ResourceController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<PagedResponse<ResourceResponse>> getAllResources(
-            @Parameter(description = "Filter by resource type (e.g., ROOM, VEHICLE, EQUIPMENT)")
-            @RequestParam(required = false) String type,
-
-            @Parameter(description = "Filter by availability status")
-            @RequestParam(required = false) Boolean available,
-
-            @Parameter(description = "Minimum hourly price filter")
-            @RequestParam(required = false) BigDecimal minPrice,
-
-            @Parameter(description = "Maximum hourly price filter")
-            @RequestParam(required = false) BigDecimal maxPrice,
-
-            @Parameter(description = "Search term for name or description")
-            @RequestParam(required = false) String search,
-
-            @Parameter(description = "Zero-indexed page number", example = "0")
-            @RequestParam(defaultValue = "0") Integer page,
-
-            @Parameter(description = "Page size (max 100)", example = "10")
-            @RequestParam(defaultValue = "10") Integer size,
-
-            @Parameter(description = "Sort expression (e.g. 'price,asc', 'name,desc')", example = "createdAt,desc")
-            @RequestParam(defaultValue = "createdAt,desc") String sort) {
+            @ParameterObject ResourceFilterRequest filter) {
 
         PagedResponse<ResourceResponse> response = resourceService.getAllResources(
-                type, available, minPrice, maxPrice, search, page, size, sort);
+                filter.getType(),
+                filter.getAvailable(),
+                filter.getMinPrice(),
+                filter.getMaxPrice(),
+                filter.getSearch(),
+                filter.getPage(),
+                filter.getSize(),
+                filter.getSort()
+        );
         return ResponseEntity.ok(response);
     }
 

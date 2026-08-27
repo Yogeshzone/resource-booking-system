@@ -48,9 +48,9 @@ public class ReservationFilterRequest {
         this.maxPrice = maxPrice;
         this.resourceId = resourceId;
         this.userId = userId;
-        this.page = page != null ? page : 0;
-        this.size = size != null ? size : 10;
-        this.sort = sort != null ? sort : "createdAt,desc";
+        this.page = page;
+        this.size = size;
+        this.sort = sort;
     }
 
     public ReservationStatus getStatus() {
@@ -98,7 +98,7 @@ public class ReservationFilterRequest {
     }
 
     public void setPage(Integer page) {
-        this.page = page != null ? page : 0;
+        this.page = page;
     }
 
     public Integer getSize() {
@@ -106,7 +106,7 @@ public class ReservationFilterRequest {
     }
 
     public void setSize(Integer size) {
-        this.size = size != null ? size : 10;
+        this.size = size;
     }
 
     public String getSort() {
@@ -114,6 +114,6 @@ public class ReservationFilterRequest {
     }
 
     public void setSort(String sort) {
-        this.sort = sort != null ? sort : "createdAt,desc";
+        this.sort = sort;
     }
 }
