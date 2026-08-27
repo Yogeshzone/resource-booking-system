@@ -76,7 +76,7 @@ public class JwtTokenProvider {
                 log.warn("Decoded Base64 secret length is less than 32 bytes ({} bytes); falling back to raw UTF-8 string bytes", decoded.length);
             }
         } catch (Exception ex) {
-            log.info("JWT secret is not Base64-encoded; treating as raw UTF-8 passphrase");
+            log.warn("JWT secret is not valid Base64 ({}); evaluating raw UTF-8 passphrase entropy", ex.getMessage());
         }
 
         if (keyBytes.length < 32) {

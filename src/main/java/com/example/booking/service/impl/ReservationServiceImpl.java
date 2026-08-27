@@ -230,8 +230,7 @@ public class ReservationServiceImpl implements ReservationService {
             statusChanged = true;
         }
 
-        boolean requiresConflictCheck = timesChanged || (statusChanged && BLOCKING_STATUSES.contains(newStatus));
-        if (requiresConflictCheck) {
+        if (shouldCheckForConflicts(timesChanged, statusChanged, newStatus)) {
             checkReservationConflict(
                     reservation.getResource().getId(),
                     newStart,
@@ -342,5 +341,9 @@ public class ReservationServiceImpl implements ReservationService {
         throw new InvalidStatusTransitionException(
                 "Invalid reservation status transition from " + currentStatus + " to " + targetStatus
         );
+    }
+
+    private boolean shouldCheckForConflicts(boolean timesChanged, boolean statusChanged, ReservationStatus newStatus) {
+        return timesChanged || (statusChanged && BLOCKING_STATUSES.contains(newStatus));
     }
 }

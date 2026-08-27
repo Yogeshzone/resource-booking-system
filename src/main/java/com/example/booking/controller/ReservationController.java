@@ -75,8 +75,7 @@ public class ReservationController {
     }
 
     @GetMapping
-    @Operation(summary = "List reservations with filtering and pagination",
-            description = "USER receives only their own reservations. ADMIN receives all reservations with optional user filtering.")
+    @Operation(summary = "Get all reservations", description = "Retrieves a paginated list of reservations with optional filtering and sorting. ADMIN users can view all reservations or filter by any userId; standard USERs always view only their own reservations.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Reservations retrieved successfully",
                     content = @Content(schema = @Schema(implementation = PagedResponse.class))),
@@ -98,7 +97,7 @@ public class ReservationController {
             @Parameter(description = "Filter by resource ID")
             @RequestParam(required = false) Long resourceId,
 
-            @Parameter(description = "Filter by user ID (ADMIN only; ignored for USER)")
+            @Parameter(description = "Filter by target user ID (ADMIN role only; ignored for standard USER role who always view their own reservations)", example = "1")
             @RequestParam(required = false) Long userId,
 
             @Parameter(description = "Zero-indexed page number", example = "0")
