@@ -63,7 +63,7 @@ public class ReservationServiceImpl implements ReservationService {
     @Transactional
     public ReservationResponse createReservation(ReservationCreateRequest request) {
         Long authenticatedUserId = SecurityUtils.getCurrentUserId();
-        log.info("User {} creating reservation for resource {}", authenticatedUserId, request.getResourceId());
+        log.info("Creating reservation for resource {}", request.getResourceId());
 
         User currentUser = userRepository.findById(authenticatedUserId)
                 .orElseThrow(() -> new UserNotFoundException(authenticatedUserId));
@@ -91,7 +91,7 @@ public class ReservationServiceImpl implements ReservationService {
         }
 
         ReservationStatus status = request.getStatus() != null ? request.getStatus() : ReservationStatus.PENDING;
-        log.info("Admin creating reservation for user {} on resource {}", targetUser.getId(), request.getResourceId());
+        log.info("Admin creating reservation on resource {}", request.getResourceId());
 
         return processReservationCreation(
                 targetUser,
@@ -195,7 +195,7 @@ public class ReservationServiceImpl implements ReservationService {
 
         reservation.setStatus(ReservationStatus.CANCELLED);
         Reservation saved = reservationRepository.save(reservation);
-        log.info("Reservation ID {} has been cancelled by user ID {}", id, SecurityUtils.getCurrentUserId());
+        log.info("Reservation ID {} has been cancelled", id);
 
         return reservationMapper.toResponseDto(saved);
     }

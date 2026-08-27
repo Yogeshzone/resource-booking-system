@@ -44,7 +44,7 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     public void run(String... args) {
         if (userRepository.count() == 0) {
-            log.info("Seeding initial database data...");
+            log.info("Non-production profile active: initializing default seed data...");
 
             // 1. Seed Users
             User admin = userRepository.save(new User(
@@ -67,8 +67,6 @@ public class DataInitializer implements CommandLineRunner {
                     passwordEncoder.encode("John@123"),
                     Role.USER
             ));
-
-            log.info("Created 3 initial users: admin, user, john_doe");
 
             // 2. Seed Resources
             Resource r1 = resourceRepository.save(new Resource(
@@ -110,8 +108,6 @@ public class DataInitializer implements CommandLineRunner {
                     new BigDecimal("40.00"),
                     true
             ));
-
-            log.info("Created 5 initial resources");
 
             // 3. Seed Reservations
             LocalDateTime baseTime = LocalDateTime.now().plusDays(2).withHour(9).withMinute(0).withSecond(0).withNano(0);
@@ -173,9 +169,7 @@ public class DataInitializer implements CommandLineRunner {
                     ReservationStatus.PENDING
             ));
 
-            log.info("Database seeding completed successfully with 3 users, 5 resources, and 5 sample reservations.");
-        } else {
-            log.info("Database already contains users. Skipping seed initialization.");
+            log.info("Development database seeding completed.");
         }
     }
 }

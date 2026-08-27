@@ -31,6 +31,7 @@ import org.springframework.stereotype.Component;
 public class JwtTokenProvider {
 
     private static final Logger log = LoggerFactory.getLogger(JwtTokenProvider.class);
+    private static final int MIN_KEY_LENGTH_BYTES = 32;
 
     private final String jwtSecret;
     private final long jwtExpirationMs;
@@ -70,18 +71,18 @@ public class JwtTokenProvider {
         byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
         try {
             byte[] decoded = io.jsonwebtoken.io.Decoders.BASE64.decode(secret);
-            if (decoded.length >= 32) {
+            if (decoded.length >= MIN_KEY_LENGTH_BYTES) {
                 keyBytes = decoded;
             } else {
-                log.warn("Decoded Base64 secret length is less than 32 bytes ({} bytes); falling back to raw UTF-8 string bytes", decoded.length);
+                log.warn("Decoded Base64 secret length is less than {} bytes ({} bytes); falling back to raw UTF-8 string bytes", MIN_KEY_LENGTH_BYTES, decoded.length);
             }
         } catch (Exception ex) {
             log.warn("JWT secret is not valid Base64 ({}); evaluating raw UTF-8 passphrase entropy", ex.getMessage());
         }
 
-        if (keyBytes.length < 32) {
+        if (keyBytes.length < MIN_KEY_LENGTH_BYTES) {
             throw new IllegalArgumentException(
-                    "JWT secret key must be at least 256 bits (32 bytes) long to ensure HMAC-SHA256 cryptographic strength. Current length: "
+                    "JWT secret key must be at least 256 bits (" + MIN_KEY_LENGTH_BYTES + " bytes) long to ensure HMAC-SHA256 cryptographic strength. Current length: "
                             + keyBytes.length + " bytes. Please provide a stronger secret key."
             );
         }

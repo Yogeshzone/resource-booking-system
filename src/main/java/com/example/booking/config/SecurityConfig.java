@@ -42,7 +42,7 @@ public class SecurityConfig {
      * - Enables CORS with application configuration
      * - Configures stateless session management (SessionCreationPolicy.STATELESS)
      * - Sets up authentication entry point and access denied handlers
-     * - Permitting public endpoints (auth, swagger/openapi, error, h2-console)
+     * - Permits public endpoints (/auth/**, /v3/api-docs/**, /swagger-ui/**)
      * - Requires authentication for all other application endpoints
      * - Sets up JWT-based authentication filter before UsernamePasswordAuthenticationFilter
      */

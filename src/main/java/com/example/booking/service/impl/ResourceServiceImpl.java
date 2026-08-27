@@ -48,7 +48,7 @@ public class ResourceServiceImpl implements ResourceService {
     @Override
     @Transactional
     public ResourceResponse createResource(ResourceCreateRequest request) {
-        log.info("Creating new resource: name='{}', type='{}', price={}", request.getName(), request.getType(), request.getPrice());
+        log.info("Creating new resource: name='{}', type='{}'", request.getName(), request.getType());
         Resource resource = resourceMapper.toEntity(request);
         Resource saved = resourceRepository.save(resource);
         return resourceMapper.toResponseDto(saved);
