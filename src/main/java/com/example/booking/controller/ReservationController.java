@@ -127,7 +127,7 @@ public class ReservationController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Reservation successfully cancelled",
                     content = @Content(schema = @Schema(implementation = ReservationResponse.class))),
-            @ApiResponse(responseCode = "400", description = "Invalid status transition (already cancelled)",
+            @ApiResponse(responseCode = "400", description = "Bad Request - InvalidStatusTransitionException (reservation is already cancelled)",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "403", description = "Forbidden - cannot cancel another user's reservation",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
