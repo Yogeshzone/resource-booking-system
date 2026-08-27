@@ -37,6 +37,16 @@ public class SecurityConfig {
         this.customAccessDeniedHandler = customAccessDeniedHandler;
     }
 
+    /**
+     * Configures the main security filter chain:
+     * - Disables CSRF (stateless REST API architecture)
+     * - Enables CORS with application configuration
+     * - Configures stateless session management (SessionCreationPolicy.STATELESS)
+     * - Sets up authentication entry point and access denied handlers
+     * - Permitting public endpoints (auth, swagger/openapi, error, h2-console)
+     * - Requires authentication for all other application endpoints
+     * - Sets up JWT-based authentication filter before UsernamePasswordAuthenticationFilter
+     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http

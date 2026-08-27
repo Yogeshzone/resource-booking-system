@@ -24,21 +24,39 @@ public class JwtTokenProvider {
 
     private final String jwtSecret;
     private final long jwtExpirationMs;
-    private final Key key;
+    private final javax.crypto.SecretKey key;
 
     public JwtTokenProvider(
             @Value("${app.jwt.secret}") String jwtSecret,
             @Value("${app.jwt.expiration-ms:86400000}") long jwtExpirationMs) {
         this.jwtSecret = jwtSecret;
         this.jwtExpirationMs = jwtExpirationMs;
-        
-        byte[] keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
-        if (keyBytes.length < 32) {
-            byte[] padded = new byte[32];
-            System.arraycopy(keyBytes, 0, padded, 0, keyBytes.length);
-            keyBytes = padded;
+        this.key = initSigningKey(jwtSecret);
+    }
+
+    private javax.crypto.SecretKey initSigningKey(String secret) {
+        if (secret == null || secret.trim().isEmpty()) {
+            throw new IllegalArgumentException("JWT secret key must not be null or empty");
         }
-        this.key = Keys.hmacShaKeyFor(keyBytes);
+
+        byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
+        try {
+            byte[] decoded = io.jsonwebtoken.io.Decoders.BASE64.decode(secret);
+            if (decoded.length >= 32) {
+                keyBytes = decoded;
+            }
+        } catch (Exception ignored) {
+            // Fall back to UTF-8 bytes
+        }
+
+        if (keyBytes.length < 32) {
+            throw new IllegalArgumentException(
+                    "JWT secret key must be at least 256 bits (32 bytes) long to ensure HMAC-SHA256 cryptographic strength. Current length: "
+                            + keyBytes.length + " bytes. Please provide a stronger secret key."
+            );
+        }
+
+        return Keys.hmacShaKeyFor(keyBytes);
     }
 
     public String generateToken(Authentication authentication) {
