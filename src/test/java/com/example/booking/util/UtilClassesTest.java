@@ -231,6 +231,36 @@ class UtilClassesTest {
         assertEquals(1L, resResp.getId());
         assertEquals(com.example.booking.enums.ReservationStatus.PENDING, resResp.getStatus());
 
+        com.example.booking.dto.reservation.ReservationFilterRequest filter = new com.example.booking.dto.reservation.ReservationFilterRequest(
+                com.example.booking.enums.ReservationStatus.CONFIRMED, new BigDecimal("10"), new BigDecimal("100"), 1L, 2L, 0, 10, "createdAt,desc"
+        );
+        assertEquals(com.example.booking.enums.ReservationStatus.CONFIRMED, filter.getStatus());
+        assertEquals(new BigDecimal("10"), filter.getMinPrice());
+        assertEquals(new BigDecimal("100"), filter.getMaxPrice());
+        assertEquals(1L, filter.getResourceId());
+        assertEquals(2L, filter.getUserId());
+        assertEquals(0, filter.getPage());
+        assertEquals(10, filter.getSize());
+        assertEquals("createdAt,desc", filter.getSort());
+
+        com.example.booking.dto.reservation.ReservationFilterRequest emptyFilter = new com.example.booking.dto.reservation.ReservationFilterRequest();
+        emptyFilter.setStatus(com.example.booking.enums.ReservationStatus.PENDING);
+        emptyFilter.setMinPrice(new BigDecimal("20"));
+        emptyFilter.setMaxPrice(new BigDecimal("200"));
+        emptyFilter.setResourceId(5L);
+        emptyFilter.setUserId(6L);
+        emptyFilter.setPage(1);
+        emptyFilter.setSize(20);
+        emptyFilter.setSort("price,asc");
+        assertEquals(com.example.booking.enums.ReservationStatus.PENDING, emptyFilter.getStatus());
+        assertEquals(new BigDecimal("20"), emptyFilter.getMinPrice());
+        assertEquals(new BigDecimal("200"), emptyFilter.getMaxPrice());
+        assertEquals(5L, emptyFilter.getResourceId());
+        assertEquals(6L, emptyFilter.getUserId());
+        assertEquals(1, emptyFilter.getPage());
+        assertEquals(20, emptyFilter.getSize());
+        assertEquals("price,asc", emptyFilter.getSort());
+
         // Exceptions
         assertEquals("msg", new com.example.booking.exception.InvalidStatusTransitionException("msg").getMessage());
         assertEquals("msg", new com.example.booking.exception.ReservationConflictException("msg").getMessage());

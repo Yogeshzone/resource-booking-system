@@ -4,6 +4,7 @@ import com.example.booking.dto.common.ErrorResponse;
 import com.example.booking.dto.common.PagedResponse;
 import com.example.booking.dto.reservation.AdminReservationCreateRequest;
 import com.example.booking.dto.reservation.ReservationCreateRequest;
+import com.example.booking.dto.reservation.ReservationFilterRequest;
 import com.example.booking.dto.reservation.ReservationResponse;
 import com.example.booking.dto.reservation.ReservationStatusUpdateRequest;
 import com.example.booking.dto.reservation.ReservationUpdateRequest;
@@ -12,6 +13,7 @@ import com.example.booking.security.SecurityUtils;
 import com.example.booking.service.ReservationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import org.springdoc.core.annotations.ParameterObject;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -85,32 +87,18 @@ public class ReservationController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<PagedResponse<ReservationResponse>> getAllReservations(
-            @Parameter(description = "Filter by status (PENDING, CONFIRMED, CANCELLED)")
-            @RequestParam(required = false) ReservationStatus status,
-
-            @Parameter(description = "Filter by minimum total price")
-            @RequestParam(required = false) BigDecimal minPrice,
-
-            @Parameter(description = "Filter by maximum total price")
-            @RequestParam(required = false) BigDecimal maxPrice,
-
-            @Parameter(description = "Filter by resource ID")
-            @RequestParam(required = false) Long resourceId,
-
-            @Parameter(description = "Filter by target user ID (ADMIN role only; ignored for standard USER role who always view their own reservations)", example = "1")
-            @RequestParam(required = false) Long userId,
-
-            @Parameter(description = "Zero-indexed page number", example = "0")
-            @RequestParam(defaultValue = "0") Integer page,
-
-            @Parameter(description = "Page size (max 100)", example = "10")
-            @RequestParam(defaultValue = "10") Integer size,
-
-            @Parameter(description = "Sort expression (e.g. 'startTime,asc', 'price,desc')", example = "createdAt,desc")
-            @RequestParam(defaultValue = "createdAt,desc") String sort) {
+            @ParameterObject ReservationFilterRequest filter) {
 
         PagedResponse<ReservationResponse> response = reservationService.getAllReservations(
-                status, minPrice, maxPrice, resourceId, userId, page, size, sort);
+                filter.getStatus(),
+                filter.getMinPrice(),
+                filter.getMaxPrice(),
+                filter.getResourceId(),
+                filter.getUserId(),
+                filter.getPage(),
+                filter.getSize(),
+                filter.getSort()
+        );
         return ResponseEntity.ok(response);
     }
 
