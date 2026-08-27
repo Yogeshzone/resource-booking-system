@@ -34,6 +34,19 @@ public class JwtTokenProvider {
         this.key = initSigningKey(jwtSecret);
     }
 
+    /**
+     * Initializes the cryptographic HMAC-SHA256 signing key from the configured JWT secret.
+     * <p>
+     * Dual-format handling:
+     * 1. Attempts Base64 decoding if the secret is a standard Base64-encoded 256-bit key.
+     * 2. Falls back to raw UTF-8 bytes if the secret is a plain passphrase / text secret.
+     * <p>
+     * Fails fast at application startup if the resulting key has less than 256 bits (32 bytes) of entropy.
+     *
+     * @param secret Configured JWT secret string
+     * @return Validated {@link javax.crypto.SecretKey} for HMAC-SHA256 operations
+     * @throws IllegalArgumentException if the secret is null, blank, or shorter than 32 bytes
+     */
     private javax.crypto.SecretKey initSigningKey(String secret) {
         if (secret == null || secret.trim().isEmpty()) {
             throw new IllegalArgumentException("JWT secret key must not be null or empty");
@@ -46,7 +59,7 @@ public class JwtTokenProvider {
                 keyBytes = decoded;
             }
         } catch (Exception ignored) {
-            // Fall back to UTF-8 bytes
+            // Fall back to UTF-8 bytes for raw text secrets
         }
 
         if (keyBytes.length < 32) {

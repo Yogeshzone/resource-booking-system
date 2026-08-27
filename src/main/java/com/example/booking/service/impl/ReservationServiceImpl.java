@@ -311,8 +311,20 @@ public class ReservationServiceImpl implements ReservationService {
             );
         }
 
-        // PENDING -> CONFIRMED, CANCELLED is allowed
-        // CONFIRMED -> CANCELLED is allowed
-        // CANCELLED -> any is blocked
+        // PENDING -> CONFIRMED or CANCELLED is allowed
+        if (currentStatus == ReservationStatus.PENDING &&
+                (targetStatus == ReservationStatus.CONFIRMED || targetStatus == ReservationStatus.CANCELLED)) {
+            return;
+        }
+
+        // CONFIRMED -> CANCELLED is allowed (or back to PENDING if admin requests)
+        if (currentStatus == ReservationStatus.CONFIRMED &&
+                (targetStatus == ReservationStatus.CANCELLED || targetStatus == ReservationStatus.PENDING)) {
+            return;
+        }
+
+        throw new InvalidStatusTransitionException(
+                "Invalid reservation status transition from " + currentStatus + " to " + targetStatus
+        );
     }
 }
