@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -332,5 +333,179 @@ class UtilClassesTest {
         org.junit.jupiter.api.Assertions.assertNotNull(com.example.booking.specification.ResourceSpecification.withFilters(
                 "ROOM", true, new BigDecimal("50"), new BigDecimal("500"), "test"
         ));
+    }
+
+    @Test
+    void globalExceptionHandler_DirectInvocation() {
+        com.example.booking.exception.GlobalExceptionHandler handler = new com.example.booking.exception.GlobalExceptionHandler();
+
+        org.springframework.http.ResponseEntity<com.example.booking.dto.common.ErrorResponse> r1 =
+                handler.handleNotFoundException(new com.example.booking.exception.ResourceNotFoundException(1L), null);
+        assertEquals(404, r1.getStatusCode().value());
+
+        org.springframework.http.ResponseEntity<com.example.booking.dto.common.ErrorResponse> r2 =
+                handler.handleNotFoundException(new com.example.booking.exception.ReservationNotFoundException(1L), null);
+        assertEquals(404, r2.getStatusCode().value());
+
+        org.springframework.http.ResponseEntity<com.example.booking.dto.common.ErrorResponse> r3 =
+                handler.handleNotFoundException(new com.example.booking.exception.UserNotFoundException(1L), null);
+        assertEquals(404, r3.getStatusCode().value());
+
+        org.springframework.http.ResponseEntity<com.example.booking.dto.common.ErrorResponse> r4 =
+                handler.handleBadRequestException(new BadRequestException("test"), null);
+        assertEquals(400, r4.getStatusCode().value());
+
+        org.springframework.http.ResponseEntity<com.example.booking.dto.common.ErrorResponse> r5 =
+                handler.handleReservationConflict(new com.example.booking.exception.ReservationConflictException("conflict"), null);
+        assertEquals(409, r5.getStatusCode().value());
+
+        org.springframework.http.ResponseEntity<com.example.booking.dto.common.ErrorResponse> r6 =
+                handler.handleResourceInUse(new com.example.booking.exception.ResourceInUseException("in use"), null);
+        assertEquals(409, r6.getStatusCode().value());
+
+        org.springframework.http.ResponseEntity<com.example.booking.dto.common.ErrorResponse> r7 =
+                handler.handleBadRequestException(new com.example.booking.exception.InvalidStatusTransitionException("invalid"), null);
+        assertEquals(400, r7.getStatusCode().value());
+
+        org.springframework.http.ResponseEntity<com.example.booking.dto.common.ErrorResponse> r8 =
+                handler.handleDataIntegrity(new org.springframework.dao.DataIntegrityViolationException("duplicate"), null);
+        assertEquals(409, r8.getStatusCode().value());
+
+        org.springframework.http.ResponseEntity<com.example.booking.dto.common.ErrorResponse> r9 =
+                handler.handleBadCredentials(new org.springframework.security.authentication.BadCredentialsException("bad creds"), null);
+        assertEquals(401, r9.getStatusCode().value());
+
+        org.springframework.http.ResponseEntity<com.example.booking.dto.common.ErrorResponse> r10 =
+                handler.handleAuthenticationException(new org.springframework.security.authentication.BadCredentialsException("auth failed"), null);
+        assertEquals(401, r10.getStatusCode().value());
+
+        org.springframework.http.ResponseEntity<com.example.booking.dto.common.ErrorResponse> r11 =
+                handler.handleJwtException(new io.jsonwebtoken.MalformedJwtException("malformed"), null);
+        assertEquals(401, r11.getStatusCode().value());
+
+        org.springframework.http.ResponseEntity<com.example.booking.dto.common.ErrorResponse> r12 =
+                handler.handleAccessDenied(new org.springframework.security.access.AccessDeniedException("denied"), null);
+        assertEquals(403, r12.getStatusCode().value());
+
+        org.springframework.http.ResponseEntity<com.example.booking.dto.common.ErrorResponse> r13 =
+                handler.handleMethodNotSupported(new org.springframework.web.HttpRequestMethodNotSupportedException("POST"), null);
+        assertEquals(405, r13.getStatusCode().value());
+
+        org.springframework.http.ResponseEntity<com.example.booking.dto.common.ErrorResponse> r14 =
+                handler.handleGenericException(new RuntimeException("unexpected"), null);
+        assertEquals(500, r14.getStatusCode().value());
+
+        org.springframework.http.ResponseEntity<com.example.booking.dto.common.ErrorResponse> r15 =
+                handler.handleIllegalArgumentException(new IllegalArgumentException("illegal arg"), null);
+        assertEquals(400, r15.getStatusCode().value());
+
+        org.springframework.http.ResponseEntity<com.example.booking.dto.common.ErrorResponse> r16 =
+                handler.handleNotReadable(new org.springframework.http.converter.HttpMessageNotReadableException("unreadable"), null);
+        assertEquals(400, r16.getStatusCode().value());
+
+        org.springframework.http.ResponseEntity<com.example.booking.dto.common.ErrorResponse> r17 =
+                handler.handleMissingParam(new org.springframework.web.bind.MissingServletRequestParameterException("param1", "String"), null);
+        assertEquals(400, r17.getStatusCode().value());
+
+        org.springframework.mock.web.MockHttpServletRequest mockReq = new org.springframework.mock.web.MockHttpServletRequest();
+        mockReq.setRequestURI("/missing/path");
+        org.springframework.http.ResponseEntity<com.example.booking.dto.common.ErrorResponse> r18 =
+                handler.handleNoResourceFound(new org.springframework.web.servlet.resource.NoResourceFoundException(org.springframework.http.HttpMethod.GET, "/missing/path"), mockReq);
+        assertEquals(404, r18.getStatusCode().value());
+    }
+
+    @Test
+    void securityUtils_Coverage() {
+        org.springframework.security.core.context.SecurityContextHolder.clearContext();
+        assertThrows(org.springframework.security.authentication.AuthenticationCredentialsNotFoundException.class, com.example.booking.security.SecurityUtils::getCurrentUser);
+        assertThrows(org.springframework.security.authentication.AuthenticationCredentialsNotFoundException.class, com.example.booking.security.SecurityUtils::getCurrentUserId);
+        assertThrows(org.springframework.security.authentication.AuthenticationCredentialsNotFoundException.class, com.example.booking.security.SecurityUtils::getCurrentUserRole);
+        assertThrows(org.springframework.security.authentication.AuthenticationCredentialsNotFoundException.class, () -> com.example.booking.security.SecurityUtils.validateOwnershipOrAdmin(1L));
+
+        com.example.booking.security.UserPrincipal user = new com.example.booking.security.UserPrincipal(
+                5L, "bob", "bob@example.com", "pass", com.example.booking.enums.Role.USER,
+                java.util.Collections.singletonList(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_USER"))
+        );
+        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(
+                new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(user, null, user.getAuthorities())
+        );
+
+        assertEquals(5L, com.example.booking.security.SecurityUtils.getCurrentUserId());
+        assertEquals(com.example.booking.enums.Role.USER, com.example.booking.security.SecurityUtils.getCurrentUserRole());
+        assertEquals("bob", com.example.booking.security.SecurityUtils.getCurrentUsername());
+        assertFalse(com.example.booking.security.SecurityUtils.isCurrentUserAdmin());
+        assertEquals(user, com.example.booking.security.SecurityUtils.getCurrentUser());
+        org.junit.jupiter.api.Assertions.assertDoesNotThrow(() -> com.example.booking.security.SecurityUtils.validateOwnershipOrAdmin(5L));
+        assertThrows(org.springframework.security.access.AccessDeniedException.class, () -> com.example.booking.security.SecurityUtils.validateOwnershipOrAdmin(99L));
+        org.springframework.security.core.context.SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void pagedResponse_And_ErrorResponse_Coverage() {
+        com.example.booking.dto.common.PagedResponse<String> paged = new com.example.booking.dto.common.PagedResponse<>(
+                java.util.List.of("a", "b"), 0, 10, 2L, 1, true, true
+        );
+        assertEquals(2, paged.getContent().size());
+        assertEquals(0, paged.getPage());
+        assertEquals(10, paged.getSize());
+        assertEquals(2L, paged.getTotalElements());
+        assertEquals(1, paged.getTotalPages());
+        assertTrue(paged.isFirst());
+        assertTrue(paged.isLast());
+
+        paged.setContent(java.util.List.of("c"));
+        paged.setPage(1);
+        paged.setSize(20);
+        paged.setTotalElements(100L);
+        paged.setTotalPages(5);
+        paged.setFirst(false);
+        paged.setLast(false);
+        assertEquals(1, paged.getContent().size());
+        assertEquals(1, paged.getPage());
+        assertEquals(20, paged.getSize());
+        assertEquals(100L, paged.getTotalElements());
+        assertEquals(5, paged.getTotalPages());
+        assertFalse(paged.isFirst());
+        assertFalse(paged.isLast());
+
+        com.example.booking.dto.common.ErrorResponse err = new com.example.booking.dto.common.ErrorResponse(
+                400, "Bad Request", "Validation failed", "/api/test", java.util.Map.of("field", "error")
+        );
+        assertEquals(400, err.getStatus());
+        assertEquals("Bad Request", err.getError());
+        assertEquals("Validation failed", err.getMessage());
+        assertEquals("/api/test", err.getPath());
+        assertNotNull(err.getTimestamp());
+        assertEquals("error", err.getFieldErrors().get("field"));
+
+        err.setStatus(500);
+        err.setError("Internal Error");
+        err.setMessage("Error occurred");
+        err.setPath("/api/err");
+        err.setTimestamp(LocalDateTime.now());
+        err.setFieldErrors(java.util.Map.of());
+        assertEquals(500, err.getStatus());
+        assertEquals("Internal Error", err.getError());
+        assertEquals("Error occurred", err.getMessage());
+        assertEquals("/api/err", err.getPath());
+
+        com.example.booking.dto.reservation.ReservationStatusUpdateRequest statusReq =
+                new com.example.booking.dto.reservation.ReservationStatusUpdateRequest();
+        statusReq.setStatus(com.example.booking.enums.ReservationStatus.CONFIRMED);
+        assertEquals(com.example.booking.enums.ReservationStatus.CONFIRMED, statusReq.getStatus());
+        assertEquals(com.example.booking.enums.ReservationStatus.PENDING, new com.example.booking.dto.reservation.ReservationStatusUpdateRequest(com.example.booking.enums.ReservationStatus.PENDING).getStatus());
+
+        com.example.booking.dto.reservation.AdminReservationCreateRequest adminReq =
+                new com.example.booking.dto.reservation.AdminReservationCreateRequest();
+        adminReq.setUserId(1L);
+        adminReq.setResourceId(2L);
+        adminReq.setStartTime(LocalDateTime.now());
+        adminReq.setEndTime(LocalDateTime.now().plusHours(1));
+        adminReq.setStatus(com.example.booking.enums.ReservationStatus.CONFIRMED);
+        assertEquals(1L, adminReq.getUserId());
+        assertEquals(2L, adminReq.getResourceId());
+        assertNotNull(adminReq.getStartTime());
+        assertNotNull(adminReq.getEndTime());
+        assertEquals(com.example.booking.enums.ReservationStatus.CONFIRMED, adminReq.getStatus());
     }
 }

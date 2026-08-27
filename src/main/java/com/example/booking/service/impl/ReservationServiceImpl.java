@@ -206,24 +206,16 @@ public class ReservationServiceImpl implements ReservationService {
         Reservation reservation = reservationRepository.findById(id)
                 .orElseThrow(() -> new ReservationNotFoundException(id));
 
-        boolean timesChanged = false;
-        boolean statusChanged = false;
-        LocalDateTime newStart = reservation.getStartTime();
-        LocalDateTime newEnd = reservation.getEndTime();
-        ReservationStatus newStatus = reservation.getStatus();
+        LocalDateTime newStart = resolveUpdatedStartTime(reservation, request);
+        LocalDateTime newEnd = resolveUpdatedEndTime(reservation, request);
+        boolean timesChanged = hasTimesChanged(reservation, newStart, newEnd);
 
         if (request.getStartTime() != null || request.getEndTime() != null) {
-            newStart = request.getStartTime() != null ? request.getStartTime() : reservation.getStartTime();
-            newEnd = request.getEndTime() != null ? request.getEndTime() : reservation.getEndTime();
             validateReservationTimes(newStart, newEnd);
-            timesChanged = !newStart.equals(reservation.getStartTime()) || !newEnd.equals(reservation.getEndTime());
         }
 
-        if (request.getStatus() != null && request.getStatus() != reservation.getStatus()) {
-            validateStatusTransition(reservation.getStatus(), request.getStatus());
-            newStatus = request.getStatus();
-            statusChanged = true;
-        }
+        ReservationStatus newStatus = resolveUpdatedStatus(reservation, request);
+        boolean statusChanged = (newStatus != reservation.getStatus());
 
         if (shouldCheckForConflicts(timesChanged, statusChanged, newStatus)) {
             checkReservationConflict(
@@ -235,13 +227,7 @@ public class ReservationServiceImpl implements ReservationService {
             );
         }
 
-        if (timesChanged) {
-            reservation.setStartTime(newStart);
-            reservation.setEndTime(newEnd);
-            reservation.setPrice(PriceCalculator.calculatePrice(reservation.getResource().getPrice(), newStart, newEnd));
-        }
-
-        reservation.setStatus(newStatus);
+        applyReservationUpdates(reservation, newStart, newEnd, newStatus, timesChanged);
         Reservation saved = reservationRepository.save(reservation);
         log.info("Admin updated reservation ID {}", id);
         return reservationMapper.toResponseDto(saved);
@@ -336,6 +322,40 @@ public class ReservationServiceImpl implements ReservationService {
         throw new InvalidStatusTransitionException(
                 "Invalid reservation status transition from " + currentStatus + " to " + targetStatus
         );
+    }
+
+    private LocalDateTime resolveUpdatedStartTime(Reservation reservation, ReservationUpdateRequest request) {
+        return (request != null && request.getStartTime() != null) ? request.getStartTime() : reservation.getStartTime();
+    }
+
+    private LocalDateTime resolveUpdatedEndTime(Reservation reservation, ReservationUpdateRequest request) {
+        return (request != null && request.getEndTime() != null) ? request.getEndTime() : reservation.getEndTime();
+    }
+
+    private boolean hasTimesChanged(Reservation reservation, LocalDateTime newStart, LocalDateTime newEnd) {
+        return !newStart.equals(reservation.getStartTime()) || !newEnd.equals(reservation.getEndTime());
+    }
+
+    private ReservationStatus resolveUpdatedStatus(Reservation reservation, ReservationUpdateRequest request) {
+        if (request != null && request.getStatus() != null && request.getStatus() != reservation.getStatus()) {
+            validateStatusTransition(reservation.getStatus(), request.getStatus());
+            return request.getStatus();
+        }
+        return reservation.getStatus();
+    }
+
+    private void applyReservationUpdates(
+            Reservation reservation,
+            LocalDateTime newStart,
+            LocalDateTime newEnd,
+            ReservationStatus newStatus,
+            boolean timesChanged) {
+        if (timesChanged) {
+            reservation.setStartTime(newStart);
+            reservation.setEndTime(newEnd);
+            reservation.setPrice(PriceCalculator.calculatePrice(reservation.getResource().getPrice(), newStart, newEnd));
+        }
+        reservation.setStatus(newStatus);
     }
 
     private boolean shouldCheckForConflicts(boolean timesChanged, boolean statusChanged, ReservationStatus newStatus) {

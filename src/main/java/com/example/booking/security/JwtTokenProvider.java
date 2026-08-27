@@ -76,8 +76,10 @@ public class JwtTokenProvider {
             } else {
                 log.warn("Decoded Base64 secret length is less than {} bytes ({} bytes); falling back to raw UTF-8 string bytes", MIN_KEY_LENGTH_BYTES, decoded.length);
             }
-        } catch (Exception ex) {
+        } catch (io.jsonwebtoken.io.DecodingException ex) {
             log.warn("JWT secret is not valid Base64 ({}); evaluating raw UTF-8 passphrase entropy", ex.getMessage());
+        } catch (IllegalArgumentException ex) {
+            log.warn("JWT secret parsing error ({}); evaluating raw UTF-8 passphrase entropy", ex.getMessage());
         }
 
         if (keyBytes.length < MIN_KEY_LENGTH_BYTES) {
@@ -125,22 +127,40 @@ public class JwtTokenProvider {
     }
 
     public Claims getClaims(String token) {
-        return Jwts.parser()
-                .verifyWith((javax.crypto.SecretKey) key)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
+        try {
+            return Jwts.parser()
+                    .verifyWith((javax.crypto.SecretKey) key)
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+        } catch (ExpiredJwtException ex) {
+            log.warn("Expired JWT token: {}", ex.getMessage());
+            throw ex;
+        } catch (MalformedJwtException | SecurityException ex) {
+            log.warn("Invalid JWT signature/format: {}", ex.getMessage());
+            throw ex;
+        } catch (UnsupportedJwtException ex) {
+            log.warn("Unsupported JWT token: {}", ex.getMessage());
+            throw ex;
+        } catch (IllegalArgumentException ex) {
+            log.warn("Empty or null JWT token: {}", ex.getMessage());
+            throw ex;
+        }
     }
 
     public boolean validateToken(String token) {
+        if (token == null || token.trim().isEmpty()) {
+            log.warn("JWT token validation failed: token is null or empty");
+            return false;
+        }
         try {
             Jwts.parser()
                     .verifyWith((javax.crypto.SecretKey) key)
                     .build()
-                    .parseSignedClaims(token);
+                    .parseSignedClaims(token.trim());
             return true;
         } catch (SecurityException | MalformedJwtException ex) {
-            log.warn("Invalid JWT signature: {}", ex.getMessage());
+            log.warn("Invalid JWT signature/format: {}", ex.getMessage());
         } catch (ExpiredJwtException ex) {
             log.warn("Expired JWT token: {}", ex.getMessage());
         } catch (UnsupportedJwtException ex) {

@@ -181,4 +181,122 @@ class ReservationServiceTest {
         assertNotNull(response);
         assertEquals(0, response.getTotalElements());
     }
+
+    @Test
+    void updateReservation_TimesChanged_RecalculatesPriceAndSucceeds() {
+        LocalDateTime originalStart = LocalDateTime.now().plusDays(2).withHour(10).withMinute(0);
+        LocalDateTime originalEnd = originalStart.plusHours(2);
+        Reservation reservation = new Reservation(testResource, testUser, originalStart, originalEnd, new BigDecimal("200.00"), ReservationStatus.PENDING);
+        reservation.setId(20L);
+
+        when(reservationRepository.findById(20L)).thenReturn(Optional.of(reservation));
+        when(reservationRepository.existsConflictingReservation(eq(1L), any(), any(), anyList(), eq(20L))).thenReturn(false);
+        when(reservationRepository.save(any(Reservation.class))).thenAnswer(i -> i.getArgument(0));
+
+        LocalDateTime newStart = originalStart.plusHours(1);
+        LocalDateTime newEnd = originalEnd.plusHours(3);
+        com.example.booking.dto.reservation.ReservationUpdateRequest request =
+                new com.example.booking.dto.reservation.ReservationUpdateRequest(newStart, newEnd, ReservationStatus.CONFIRMED);
+
+        ReservationResponse response = reservationService.updateReservation(20L, request);
+        assertNotNull(response);
+        assertEquals(ReservationStatus.CONFIRMED, response.getStatus());
+        assertEquals(new BigDecimal("400.00"), response.getPrice());
+    }
+
+    @Test
+    void updateReservation_Conflict_ThrowsReservationConflictException() {
+        LocalDateTime start = LocalDateTime.now().plusDays(2).withHour(10).withMinute(0);
+        LocalDateTime end = start.plusHours(2);
+        Reservation reservation = new Reservation(testResource, testUser, start, end, new BigDecimal("200.00"), ReservationStatus.PENDING);
+        reservation.setId(21L);
+
+        when(reservationRepository.findById(21L)).thenReturn(Optional.of(reservation));
+        when(reservationRepository.existsConflictingReservation(eq(1L), any(), any(), anyList(), eq(21L))).thenReturn(true);
+
+        com.example.booking.dto.reservation.ReservationUpdateRequest request =
+                new com.example.booking.dto.reservation.ReservationUpdateRequest(start.plusHours(1), end.plusHours(1), null);
+
+        assertThrows(ReservationConflictException.class, () -> reservationService.updateReservation(21L, request));
+    }
+
+    @Test
+    void updateReservation_InvalidTransition_ThrowsInvalidStatusTransitionException() {
+        Reservation cancelledReservation = new Reservation(testResource, testUser, LocalDateTime.now().plusDays(1), LocalDateTime.now().plusDays(1).plusHours(2),
+                new BigDecimal("100.00"), ReservationStatus.CANCELLED);
+        cancelledReservation.setId(22L);
+
+        when(reservationRepository.findById(22L)).thenReturn(Optional.of(cancelledReservation));
+
+        com.example.booking.dto.reservation.ReservationUpdateRequest request =
+                new com.example.booking.dto.reservation.ReservationUpdateRequest(null, null, ReservationStatus.CONFIRMED);
+
+        assertThrows(InvalidStatusTransitionException.class, () -> reservationService.updateReservation(22L, request));
+    }
+
+    @Test
+    void updateReservationStatus_Success() {
+        Reservation reservation = new Reservation(testResource, testUser, LocalDateTime.now().plusDays(1), LocalDateTime.now().plusDays(1).plusHours(2),
+                new BigDecimal("100.00"), ReservationStatus.PENDING);
+        reservation.setId(23L);
+
+        when(reservationRepository.findById(23L)).thenReturn(Optional.of(reservation));
+        when(reservationRepository.existsConflictingReservation(eq(1L), any(), any(), anyList(), eq(23L))).thenReturn(false);
+        when(reservationRepository.save(any(Reservation.class))).thenAnswer(i -> i.getArgument(0));
+
+        ReservationResponse response = reservationService.updateReservationStatus(23L, ReservationStatus.CONFIRMED);
+        assertNotNull(response);
+        assertEquals(ReservationStatus.CONFIRMED, response.getStatus());
+    }
+
+    @Test
+    void deleteReservation_Success() {
+        Reservation reservation = new Reservation(testResource, testUser, LocalDateTime.now().plusDays(1), LocalDateTime.now().plusDays(1).plusHours(2),
+                new BigDecimal("100.00"), ReservationStatus.PENDING);
+        reservation.setId(24L);
+
+        when(reservationRepository.findById(24L)).thenReturn(Optional.of(reservation));
+
+        reservationService.deleteReservation(24L);
+        verify(reservationRepository).delete(reservation);
+    }
+
+    @Test
+    void createAdminReservation_ExplicitUser_Success() {
+        User adminUser = new User("admin", "admin@example.com", "pass", Role.ADMIN);
+        adminUser.setId(99L);
+        User targetUser = new User("target", "target@example.com", "pass", Role.USER);
+        targetUser.setId(2L);
+
+        when(userRepository.findById(2L)).thenReturn(Optional.of(targetUser));
+        when(resourceRepository.findById(1L)).thenReturn(Optional.of(testResource));
+        when(reservationRepository.existsConflictingReservation(eq(1L), any(), any(), anyList(), eq(null))).thenReturn(false);
+
+        Reservation savedReservation = new Reservation(testResource, targetUser, LocalDateTime.now().plusDays(1), LocalDateTime.now().plusDays(1).plusHours(2),
+                new BigDecimal("200.00"), ReservationStatus.CONFIRMED);
+        savedReservation.setId(25L);
+        when(reservationRepository.save(any(Reservation.class))).thenReturn(savedReservation);
+
+        com.example.booking.dto.reservation.AdminReservationCreateRequest request =
+                new com.example.booking.dto.reservation.AdminReservationCreateRequest(
+                        2L, 1L, LocalDateTime.now().plusDays(1), LocalDateTime.now().plusDays(1).plusHours(2), ReservationStatus.CONFIRMED
+                );
+
+        ReservationResponse response = reservationService.createAdminReservation(request);
+        assertNotNull(response);
+        assertEquals(ReservationStatus.CONFIRMED, response.getStatus());
+    }
+
+    @Test
+    void getReservationById_Success() {
+        Reservation reservation = new Reservation(testResource, testUser, LocalDateTime.now().plusDays(1), LocalDateTime.now().plusDays(1).plusHours(2),
+                new BigDecimal("100.00"), ReservationStatus.PENDING);
+        reservation.setId(26L);
+
+        when(reservationRepository.findById(26L)).thenReturn(Optional.of(reservation));
+
+        ReservationResponse response = reservationService.getReservationById(26L);
+        assertNotNull(response);
+        assertEquals(26L, response.getId());
+    }
 }

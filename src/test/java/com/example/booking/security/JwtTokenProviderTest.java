@@ -43,10 +43,47 @@ class JwtTokenProviderTest {
     }
 
     @Test
-    void validateToken_InvalidToken_ReturnsFalse() {
-        assertFalse(jwtTokenProvider.validateToken("invalid.jwt.token"));
+    void generateToken_FromAuthentication() {
+        org.springframework.security.authentication.UsernamePasswordAuthenticationToken auth =
+                new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
+                        testUser, null, testUser.getAuthorities()
+                );
+        String token = jwtTokenProvider.generateToken(auth);
+        assertNotNull(token);
+        assertEquals("testuser", jwtTokenProvider.getUsernameFromToken(token));
+    }
+
+    @Test
+    void validateToken_ExpiredToken_ReturnsFalseAndThrowsOnGetClaims() {
+        // Create a provider with -1000ms expiration (already expired token)
+        JwtTokenProvider expiredProvider = new JwtTokenProvider(STRONG_SECRET, -1000L);
+        String expiredToken = expiredProvider.generateToken(testUser);
+
+        assertFalse(jwtTokenProvider.validateToken(expiredToken));
+        assertThrows(io.jsonwebtoken.ExpiredJwtException.class, () -> jwtTokenProvider.getClaims(expiredToken));
+    }
+
+    @Test
+    void validateToken_MalformedToken_ReturnsFalseAndThrowsOnGetClaims() {
+        assertFalse(jwtTokenProvider.validateToken("not.a.valid.jwt.token"));
+        assertThrows(io.jsonwebtoken.JwtException.class, () -> jwtTokenProvider.getClaims("not.a.valid.jwt.token"));
+    }
+
+    @Test
+    void validateToken_NullOrEmptyToken_ReturnsFalseAndThrowsOnGetClaims() {
         assertFalse(jwtTokenProvider.validateToken(""));
+        assertFalse(jwtTokenProvider.validateToken("   "));
         assertFalse(jwtTokenProvider.validateToken(null));
+        assertThrows(IllegalArgumentException.class, () -> jwtTokenProvider.getClaims(""));
+    }
+
+    @Test
+    void constructor_RawPassphraseKey_Success() {
+        String rawPassphrase = "ThisIsA32ByteLongSecurePassphraseForTesting!";
+        JwtTokenProvider rawProvider = new JwtTokenProvider(rawPassphrase, 3600000);
+        String token = rawProvider.generateToken(testUser);
+        assertTrue(rawProvider.validateToken(token));
+        assertEquals("testuser", rawProvider.getUsernameFromToken(token));
     }
 
     @Test

@@ -103,4 +103,61 @@ class ResourceServiceTest {
         assertNotNull(response);
         assertEquals(0, response.getTotalElements());
     }
+
+    @Test
+    void updateResource_Success() {
+        when(resourceRepository.findById(1L)).thenReturn(Optional.of(sampleResource));
+        when(resourceRepository.save(any(Resource.class))).thenAnswer(i -> i.getArgument(0));
+
+        com.example.booking.dto.resource.ResourceUpdateRequest request =
+                new com.example.booking.dto.resource.ResourceUpdateRequest(
+                        "Updated Room", "Updated Desc", "ROOM", new BigDecimal("150.00"), false
+                );
+
+        ResourceResponse response = resourceService.updateResource(1L, request);
+        assertNotNull(response);
+        assertEquals("Updated Room", response.getName());
+        assertEquals("Updated Desc", response.getDescription());
+        assertEquals(new BigDecimal("150.00"), response.getPrice());
+    }
+
+    @Test
+    void patchResource_PartialUpdate_Success() {
+        when(resourceRepository.findById(1L)).thenReturn(Optional.of(sampleResource));
+        when(resourceRepository.save(any(Resource.class))).thenAnswer(i -> i.getArgument(0));
+
+        com.example.booking.dto.resource.ResourceUpdateRequest request =
+                new com.example.booking.dto.resource.ResourceUpdateRequest(
+                        null, "Patched Desc", null, null, null
+                );
+
+        ResourceResponse response = resourceService.patchResource(1L, request);
+        assertNotNull(response);
+        assertEquals("Test Room", response.getName());
+        assertEquals("Patched Desc", response.getDescription());
+    }
+
+    @Test
+    void updateResource_EmptyName_ThrowsBadRequestException() {
+        when(resourceRepository.findById(1L)).thenReturn(Optional.of(sampleResource));
+
+        com.example.booking.dto.resource.ResourceUpdateRequest request =
+                new com.example.booking.dto.resource.ResourceUpdateRequest(
+                        "   ", "Desc", "ROOM", new BigDecimal("100.00"), true
+                );
+
+        assertThrows(com.example.booking.exception.BadRequestException.class, () -> resourceService.updateResource(1L, request));
+    }
+
+    @Test
+    void updateResource_NegativePrice_ThrowsBadRequestException() {
+        when(resourceRepository.findById(1L)).thenReturn(Optional.of(sampleResource));
+
+        com.example.booking.dto.resource.ResourceUpdateRequest request =
+                new com.example.booking.dto.resource.ResourceUpdateRequest(
+                        "Name", "Desc", "ROOM", new BigDecimal("-10.00"), true
+                );
+
+        assertThrows(com.example.booking.exception.BadRequestException.class, () -> resourceService.updateResource(1L, request));
+    }
 }
