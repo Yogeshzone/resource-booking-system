@@ -9,14 +9,24 @@ import io.jsonwebtoken.UnsupportedJwtException;
 import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.security.SecurityException;
 import java.nio.charset.StandardCharsets;
-import java.security.Key;
 import java.util.Date;
+import javax.crypto.SecretKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
+/**
+ * Provider responsible for generating, parsing, and validating JSON Web Tokens (JWT).
+ * <p>
+ * Security & Lifecycle Architecture:
+ * - This component is managed as a Spring Singleton bean.
+ * - The cryptographic HMAC-SHA256 {@link SecretKey} is initialized once at startup and retained in memory
+ *   for the application lifecycle to provide non-blocking, constant-time signature verification.
+ * - For enterprise deployments requiring external key rotation or Hardware Security Modules (HSM),
+ *   this provider can be integrated with cloud Key Management Services (KMS) or Vault.
+ */
 @Component
 public class JwtTokenProvider {
 
@@ -24,7 +34,12 @@ public class JwtTokenProvider {
 
     private final String jwtSecret;
     private final long jwtExpirationMs;
-    private final javax.crypto.SecretKey key;
+
+    /**
+     * In-memory HMAC-SHA256 secret key for signing and verifying tokens.
+     * Maintained within the singleton bean context for high-throughput stateless token operations.
+     */
+    private final SecretKey key;
 
     public JwtTokenProvider(
             @Value("${app.jwt.secret}") String jwtSecret,
