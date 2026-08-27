@@ -41,8 +41,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class ReservationServiceImpl implements ReservationService {
 
     private static final Logger log = LoggerFactory.getLogger(ReservationServiceImpl.class);
-    private static final List<ReservationStatus> BLOCKING_STATUSES =
-            List.of(ReservationStatus.PENDING, ReservationStatus.CONFIRMED);
 
     private final ReservationRepository reservationRepository;
     private final ResourceRepository resourceRepository;
@@ -260,7 +258,7 @@ public class ReservationServiceImpl implements ReservationService {
 
         validateStatusTransition(reservation.getStatus(), targetStatus);
 
-        if (BLOCKING_STATUSES.contains(targetStatus)) {
+        if (targetStatus.isBlocking()) {
             checkReservationConflict(
                     reservation.getResource().getId(),
                     reservation.getStartTime(),
@@ -304,7 +302,7 @@ public class ReservationServiceImpl implements ReservationService {
     private void checkReservationConflict(
             Long resourceId, LocalDateTime startTime, LocalDateTime endTime, Long excludeReservationId, String resourceName) {
         boolean hasConflict = reservationRepository.existsConflictingReservation(
-                resourceId, startTime, endTime, BLOCKING_STATUSES, excludeReservationId
+                resourceId, startTime, endTime, ReservationStatus.BLOCKING_STATUSES, excludeReservationId
         );
 
         if (hasConflict) {
@@ -344,6 +342,6 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     private boolean shouldCheckForConflicts(boolean timesChanged, boolean statusChanged, ReservationStatus newStatus) {
-        return timesChanged || (statusChanged && BLOCKING_STATUSES.contains(newStatus));
+        return timesChanged || (statusChanged && newStatus.isBlocking());
     }
 }

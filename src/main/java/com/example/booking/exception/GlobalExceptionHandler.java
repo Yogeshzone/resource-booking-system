@@ -147,7 +147,9 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(
             Exception ex, HttpServletRequest request) {
-        log.error("Unhandled internal server error: ", ex);
+        log.error("Unhandled internal server error occurred for request [{}]: {}",
+                request != null ? request.getRequestURI() : "N/A", ex.getMessage());
+        log.debug("Internal server error stack trace:", ex);
         return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Internal Server Error", "An unexpected internal error occurred. Please try again later.", request);
     }
 

@@ -94,26 +94,26 @@ public class ReservationFilterRequest {
     }
 
     public Integer getPage() {
-        return page != null ? page : 0;
+        return page;
     }
 
     public void setPage(Integer page) {
-        this.page = page;
+        this.page = page != null ? page : 0;
     }
 
     public Integer getSize() {
-        return size != null ? size : 10;
+        return size;
     }
 
     public void setSize(Integer size) {
-        this.size = size;
+        this.size = size != null ? size : 10;
     }
 
     public String getSort() {
-        return sort != null ? sort : "createdAt,desc";
+        return sort;
     }
 
     public void setSort(String sort) {
-        this.sort = sort;
+        this.sort = sort != null ? sort : "createdAt,desc";
     }
 }
