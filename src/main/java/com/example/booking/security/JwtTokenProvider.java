@@ -72,9 +72,11 @@ public class JwtTokenProvider {
             byte[] decoded = io.jsonwebtoken.io.Decoders.BASE64.decode(secret);
             if (decoded.length >= 32) {
                 keyBytes = decoded;
+            } else {
+                log.warn("Decoded Base64 secret length is less than 32 bytes ({} bytes); falling back to raw UTF-8 string bytes", decoded.length);
             }
-        } catch (Exception ignored) {
-            // Fall back to UTF-8 bytes for raw text secrets
+        } catch (Exception ex) {
+            log.info("JWT secret is not Base64-encoded; treating as raw UTF-8 passphrase");
         }
 
         if (keyBytes.length < 32) {

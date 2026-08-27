@@ -89,15 +89,15 @@ public class ResourceServiceImpl implements ResourceService {
                 .map(resourceMapper::toResponseDto)
                 .toList();
 
-        return new PagedResponse<>(
-                responses,
-                resourcePage.getNumber(),
-                resourcePage.getSize(),
-                resourcePage.getTotalElements(),
-                resourcePage.getTotalPages(),
-                resourcePage.isFirst(),
-                resourcePage.isLast()
-        );
+        return PagedResponse.<ResourceResponse>builder()
+                .content(responses)
+                .page(resourcePage.getNumber())
+                .size(resourcePage.getSize())
+                .totalElements(resourcePage.getTotalElements())
+                .totalPages(resourcePage.getTotalPages())
+                .first(resourcePage.isFirst())
+                .last(resourcePage.isLast())
+                .build();
     }
 
     @Override
@@ -107,9 +107,7 @@ public class ResourceServiceImpl implements ResourceService {
                 .orElseThrow(() -> new ResourceNotFoundException(id));
 
         if (request.getName() != null) {
-            if (request.getName().trim().isEmpty()) {
-                throw new BadRequestException("Resource name cannot be empty");
-            }
+            validateName(request.getName());
             resource.setName(request.getName().trim());
         }
 
@@ -118,16 +116,12 @@ public class ResourceServiceImpl implements ResourceService {
         }
 
         if (request.getType() != null) {
-            if (request.getType().trim().isEmpty()) {
-                throw new BadRequestException("Resource type cannot be empty");
-            }
+            validateType(request.getType());
             resource.setType(request.getType().trim());
         }
 
         if (request.getPrice() != null) {
-            if (request.getPrice().compareTo(BigDecimal.ZERO) < 0) {
-                throw new BadRequestException("Price must be non-negative");
-            }
+            validatePrice(request.getPrice());
             resource.setPrice(request.getPrice());
         }
 
@@ -138,6 +132,24 @@ public class ResourceServiceImpl implements ResourceService {
         Resource updated = resourceRepository.save(resource);
         log.info("Updated resource with ID: {}", id);
         return resourceMapper.toResponseDto(updated);
+    }
+
+    private void validateName(String name) {
+        if (name == null || name.trim().isEmpty()) {
+            throw new BadRequestException("Resource name cannot be empty");
+        }
+    }
+
+    private void validateType(String type) {
+        if (type == null || type.trim().isEmpty()) {
+            throw new BadRequestException("Resource type cannot be empty");
+        }
+    }
+
+    private void validatePrice(BigDecimal price) {
+        if (price == null || price.compareTo(BigDecimal.ZERO) < 0) {
+            throw new BadRequestException("Price must be non-negative");
+        }
     }
 
     @Override

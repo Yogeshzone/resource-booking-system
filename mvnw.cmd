@@ -1,20 +1,43 @@
 @echo off
 setlocal
 
-rem Detect and set JAVA_HOME if not set or pointing to old version
+rem If JAVA_HOME is not set, attempt standard JDK discovery
 if "%JAVA_HOME%"=="" (
-    if exist "C:\Program Files (x86)\jdk-23.0.2" set "JAVA_HOME=C:\Program Files (x86)\jdk-23.0.2"
-    if exist "C:\Users\%USERNAME%\Downloads\oracleJdk-26" set "JAVA_HOME=C:\Users\%USERNAME%\Downloads\oracleJdk-26"
+    for /d %%J in ("%ProgramFiles%\Java\jdk*" "%ProgramFiles(x86)\Java\jdk*" "%ProgramFiles(x86)\jdk*" "%ProgramFiles%\jdk*" "%USERPROFILE%\.jdks\*" "%USERPROFILE%\Downloads\*jdk*") do (
+        if exist "%%J\bin\javac.exe" set "JAVA_HOME=%%J"
+    )
 )
 
-if not "%JAVA_HOME%"=="" set "PATH=%JAVA_HOME%\bin;%PATH%"
+if not "%JAVA_HOME%"=="" (
+    set "PATH=%JAVA_HOME%\bin;%PATH%"
+)
 
-rem Look for Maven in .m2 wrapper dists
-if exist "%USERPROFILE%\.m2\wrapper\dists\apache-maven-3.9.16\0daed3be3ebd1c706f0e69e8b07c6b73f5cc4ea3dfce72a8d0ec2e849ca2ddb0\bin\mvn.cmd" (
-    "%USERPROFILE%\.m2\wrapper\dists\apache-maven-3.9.16\0daed3be3ebd1c706f0e69e8b07c6b73f5cc4ea3dfce72a8d0ec2e849ca2ddb0\bin\mvn.cmd" %*
+rem 1. Check MAVEN_HOME
+if not "%MAVEN_HOME%"=="" (
+    if exist "%MAVEN_HOME%\bin\mvn.cmd" (
+        "%MAVEN_HOME%\bin\mvn.cmd" %*
+        exit /b %ERRORLEVEL%
+    )
+)
+
+rem 2. Check installed Maven wrapper distribution in user home
+for /f "delims=" %%F in ('dir /b /s "%USERPROFILE%\.m2\wrapper\dists\mvn.cmd" 2^>nul') do (
+    if exist "%%F" (
+        "%%F" %*
+        exit /b %ERRORLEVEL%
+    )
+)
+
+rem 3. Check system PATH
+for /f "delims=" %%I in ('where mvn.cmd 2^>nul') do (
+    "%%I" %*
     exit /b %ERRORLEVEL%
 )
 
-rem Fallback to PATH mvn
+for /f "delims=" %%I in ('where mvn 2^>nul') do (
+    "%%I" %*
+    exit /b %ERRORLEVEL%
+)
+
 mvn %*
 

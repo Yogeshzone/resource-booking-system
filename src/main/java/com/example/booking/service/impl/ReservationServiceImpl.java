@@ -14,6 +14,7 @@ import com.example.booking.exception.InvalidStatusTransitionException;
 import com.example.booking.exception.ReservationConflictException;
 import com.example.booking.exception.ReservationNotFoundException;
 import com.example.booking.exception.ResourceNotFoundException;
+import com.example.booking.exception.UserNotFoundException;
 import com.example.booking.mapper.ReservationMapper;
 import com.example.booking.repository.ReservationRepository;
 import com.example.booking.repository.ResourceRepository;
@@ -66,7 +67,7 @@ public class ReservationServiceImpl implements ReservationService {
         log.info("User {} creating reservation for resource {}", authenticatedUserId, request.getResourceId());
 
         User currentUser = userRepository.findById(authenticatedUserId)
-                .orElseThrow(() -> new BadRequestException("Authenticated user not found in database"));
+                .orElseThrow(() -> new UserNotFoundException(authenticatedUserId));
 
         return processReservationCreation(
                 currentUser,
@@ -83,11 +84,11 @@ public class ReservationServiceImpl implements ReservationService {
         User targetUser;
         if (request.getUserId() != null) {
             targetUser = userRepository.findById(request.getUserId())
-                    .orElseThrow(() -> new BadRequestException("Target user not found with ID: " + request.getUserId()));
+                    .orElseThrow(() -> new UserNotFoundException(request.getUserId()));
         } else {
             Long currentAdminId = SecurityUtils.getCurrentUserId();
             targetUser = userRepository.findById(currentAdminId)
-                    .orElseThrow(() -> new BadRequestException("Current admin user not found in database"));
+                    .orElseThrow(() -> new UserNotFoundException(currentAdminId));
         }
 
         ReservationStatus status = request.getStatus() != null ? request.getStatus() : ReservationStatus.PENDING;
