@@ -2,6 +2,7 @@ package com.example.booking.service.impl;
 
 import com.example.booking.dto.common.PagedResponse;
 import com.example.booking.dto.resource.ResourceCreateRequest;
+import com.example.booking.dto.resource.ResourceFilterRequest;
 import com.example.booking.dto.resource.ResourceResponse;
 import com.example.booking.dto.resource.ResourceUpdateRequest;
 import com.example.booking.entity.Resource;
@@ -63,26 +64,25 @@ public class ResourceServiceImpl implements ResourceService {
 
     @Override
     @Transactional(readOnly = true)
-    public PagedResponse<ResourceResponse> getAllResources(
-            String type,
-            Boolean available,
-            BigDecimal minPrice,
-            BigDecimal maxPrice,
-            String search,
-            Integer page,
-            Integer size,
-            String sort) {
+    public PagedResponse<ResourceResponse> getAllResources(ResourceFilterRequest filter) {
+        ResourceFilterRequest request = filter != null ? filter : new ResourceFilterRequest();
 
         Pageable pageable = SortUtils.createPageable(
-                page,
-                size,
-                sort,
+                request.getPage(),
+                request.getSize(),
+                request.getSort(),
                 SortUtils.ALLOWED_RESOURCE_SORT_FIELDS,
                 "createdAt",
                 Sort.Direction.DESC
         );
 
-        Specification<Resource> spec = ResourceSpecification.withFilters(type, available, minPrice, maxPrice, search);
+        Specification<Resource> spec = ResourceSpecification.withFilters(
+                request.getType(),
+                request.getAvailable(),
+                request.getMinPrice(),
+                request.getMaxPrice(),
+                request.getSearch()
+        );
         Page<Resource> resourcePage = resourceRepository.findAll(spec, pageable);
 
         List<ResourceResponse> responses = resourcePage.getContent().stream()

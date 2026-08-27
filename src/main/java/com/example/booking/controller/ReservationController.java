@@ -83,17 +83,7 @@ public class ReservationController {
     })
     public ResponseEntity<PagedResponse<ReservationResponse>> getAllReservations(
             @ParameterObject ReservationFilterRequest filter) {
-
-        PagedResponse<ReservationResponse> response = reservationService.getAllReservations(
-                filter.getStatus(),
-                filter.getMinPrice(),
-                filter.getMaxPrice(),
-                filter.getResourceId(),
-                filter.getUserId(),
-                filter.getPage(),
-                filter.getSize(),
-                filter.getSort()
-        );
+        PagedResponse<ReservationResponse> response = reservationService.getAllReservations(filter);
         return ResponseEntity.ok(response);
     }
 

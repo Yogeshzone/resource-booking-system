@@ -69,17 +69,7 @@ public class ResourceController {
     })
     public ResponseEntity<PagedResponse<ResourceResponse>> getAllResources(
             @ParameterObject ResourceFilterRequest filter) {
-
-        PagedResponse<ResourceResponse> response = resourceService.getAllResources(
-                filter.getType(),
-                filter.getAvailable(),
-                filter.getMinPrice(),
-                filter.getMaxPrice(),
-                filter.getSearch(),
-                filter.getPage(),
-                filter.getSize(),
-                filter.getSort()
-        );
+        PagedResponse<ResourceResponse> response = resourceService.getAllResources(filter);
         return ResponseEntity.ok(response);
     }
 

@@ -85,4 +85,22 @@ class ResourceServiceTest {
 
         verify(resourceRepository).delete(sampleResource);
     }
+
+    @Test
+    void getAllResources_WithFilter_ReturnsPagedResponse() {
+        com.example.booking.dto.resource.ResourceFilterRequest filter =
+                new com.example.booking.dto.resource.ResourceFilterRequest();
+        filter.setType("ROOM");
+
+        org.springframework.data.domain.Page<Resource> page =
+                new org.springframework.data.domain.PageImpl<>(java.util.List.of());
+        when(resourceRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class), any(org.springframework.data.domain.Pageable.class)))
+                .thenReturn(page);
+
+        com.example.booking.dto.common.PagedResponse<ResourceResponse> response =
+                resourceService.getAllResources(filter);
+
+        assertNotNull(response);
+        assertEquals(0, response.getTotalElements());
+    }
 }

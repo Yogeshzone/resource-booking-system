@@ -163,4 +163,22 @@ class ReservationServiceTest {
 
         assertThrows(InvalidStatusTransitionException.class, () -> reservationService.cancelReservation(5L));
     }
+
+    @Test
+    void getAllReservations_WithFilter_ReturnsPagedResponse() {
+        com.example.booking.dto.reservation.ReservationFilterRequest filter =
+                new com.example.booking.dto.reservation.ReservationFilterRequest();
+        filter.setStatus(ReservationStatus.PENDING);
+
+        org.springframework.data.domain.Page<Reservation> page =
+                new org.springframework.data.domain.PageImpl<>(java.util.List.of());
+        when(reservationRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class), any(org.springframework.data.domain.Pageable.class)))
+                .thenReturn(page);
+
+        com.example.booking.dto.common.PagedResponse<ReservationResponse> response =
+                reservationService.getAllReservations(filter);
+
+        assertNotNull(response);
+        assertEquals(0, response.getTotalElements());
+    }
 }

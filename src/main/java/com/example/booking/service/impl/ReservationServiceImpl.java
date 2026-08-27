@@ -3,6 +3,7 @@ package com.example.booking.service.impl;
 import com.example.booking.dto.common.PagedResponse;
 import com.example.booking.dto.reservation.AdminReservationCreateRequest;
 import com.example.booking.dto.reservation.ReservationCreateRequest;
+import com.example.booking.dto.reservation.ReservationFilterRequest;
 import com.example.booking.dto.reservation.ReservationResponse;
 import com.example.booking.dto.reservation.ReservationUpdateRequest;
 import com.example.booking.entity.Reservation;
@@ -141,34 +142,30 @@ public class ReservationServiceImpl implements ReservationService {
 
     @Override
     @Transactional(readOnly = true)
-    public PagedResponse<ReservationResponse> getAllReservations(
-            ReservationStatus status,
-            BigDecimal minPrice,
-            BigDecimal maxPrice,
-            Long resourceId,
-            Long userId,
-            Integer page,
-            Integer size,
-            String sort) {
+    public PagedResponse<ReservationResponse> getAllReservations(ReservationFilterRequest filter) {
+        ReservationFilterRequest request = filter != null ? filter : new ReservationFilterRequest();
 
         UserPrincipal currentUser = SecurityUtils.getCurrentUser();
-        Long effectiveUserId = currentUser.isAdmin() ? userId : currentUser.getId();
+        Long effectiveUserId = currentUser.isAdmin() ? request.getUserId() : currentUser.getId();
 
         Pageable pageable = SortUtils.createPageable(
-                page,
-                size,
-                sort,
+                request.getPage(),
+                request.getSize(),
+                request.getSort(),
                 SortUtils.ALLOWED_RESERVATION_SORT_FIELDS,
                 "createdAt",
                 Sort.Direction.DESC
         );
 
         Specification<Reservation> spec = ReservationSpecification.withFilters(
-                status, minPrice, maxPrice, resourceId, effectiveUserId
+                request.getStatus(),
+                request.getMinPrice(),
+                request.getMaxPrice(),
+                request.getResourceId(),
+                effectiveUserId
         );
 
         Page<Reservation> reservationPage = reservationRepository.findAll(spec, pageable);
-
         List<ReservationResponse> responses = reservationPage.getContent().stream()
                 .map(reservationMapper::toResponseDto)
                 .toList();
