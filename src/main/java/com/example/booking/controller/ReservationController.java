@@ -146,7 +146,8 @@ public class ReservationController {
     public ResponseEntity<ReservationResponse> patchReservation(
             @PathVariable Long id,
             @Valid @RequestBody ReservationUpdateRequest request) {
-        return updateReservation(id, request);
+        ReservationResponse response = reservationService.updateReservation(id, request);
+        return ResponseEntity.ok(response);
     }
 
     @PatchMapping("/{id}/cancel")

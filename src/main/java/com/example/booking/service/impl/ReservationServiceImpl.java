@@ -212,6 +212,7 @@ public class ReservationServiceImpl implements ReservationService {
                 .orElseThrow(() -> new ReservationNotFoundException(id));
 
         boolean timesChanged = false;
+        boolean statusChanged = false;
         LocalDateTime newStart = reservation.getStartTime();
         LocalDateTime newEnd = reservation.getEndTime();
         ReservationStatus newStatus = reservation.getStatus();
@@ -220,16 +221,17 @@ public class ReservationServiceImpl implements ReservationService {
             newStart = request.getStartTime() != null ? request.getStartTime() : reservation.getStartTime();
             newEnd = request.getEndTime() != null ? request.getEndTime() : reservation.getEndTime();
             validateReservationTimes(newStart, newEnd);
-            timesChanged = true;
+            timesChanged = !newStart.equals(reservation.getStartTime()) || !newEnd.equals(reservation.getEndTime());
         }
 
-        if (request.getStatus() != null) {
+        if (request.getStatus() != null && request.getStatus() != reservation.getStatus()) {
             validateStatusTransition(reservation.getStatus(), request.getStatus());
             newStatus = request.getStatus();
+            statusChanged = true;
         }
 
-        // Check conflicts if times changed OR if the reservation is in/transitioning to an active state
-        if (timesChanged || (request.getStatus() != null && BLOCKING_STATUSES.contains(newStatus))) {
+        boolean requiresConflictCheck = timesChanged || (statusChanged && BLOCKING_STATUSES.contains(newStatus));
+        if (requiresConflictCheck) {
             checkReservationConflict(
                     reservation.getResource().getId(),
                     newStart,
